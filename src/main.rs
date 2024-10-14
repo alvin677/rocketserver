@@ -1,5 +1,6 @@
 use rocket::fs::{FileServer, relative};
 use std::fs;
+mod api;
 
 #[macro_use] extern crate rocket;
 
@@ -21,16 +22,10 @@ fn site(file: &str) -> rocket::response::content::RawHtml<String> {
     return rocket::response::content::RawHtml(index_file);
 }
 
-// api test
-#[get("/hello/<name>/<age>")]
-fn hello(name: &str, age: u8) -> String {
-    format!("Hello, {} year old named {}!", age, name)
-}
-
 // define routes to use
 #[launch]
 fn rocket() -> _ {
     rocket::build()
-        .mount("/", routes![index, hello, site])
+        .mount("/", routes![index, api::greet::hello, site])
         .mount("/html", FileServer::from(relative!("html")))
 }
