@@ -26,6 +26,6 @@ fn site(file: &str) -> rocket::response::content::RawHtml<String> {
 #[launch]
 fn rocket() -> _ {
     rocket::build()
-        .mount("/", routes![index, api::greet::hello, site])
+        .mount("/", routes![index, api::greet::hello, site, api::rpi::get_temp])
         .mount("/html", FileServer::from(relative!("html")))
 }
