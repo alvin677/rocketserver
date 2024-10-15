@@ -2,3 +2,4 @@
 
 pub mod greet;
 pub mod rpi;
+pub mod secure;
