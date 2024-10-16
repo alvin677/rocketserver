@@ -3,32 +3,32 @@ mod api;
 
 #[macro_use] extern crate rocket;
 
-#[rocket::main]
-async fn main() -> Result<(), rocket::Error> {
-    // HTTP config
-    let http_config = rocket::Config::figment()
-        .merge(("port", 8000))  // HTTP Port
-        .merge(("address", "0.0.0.0"));
+// index.html file in directory
+/*#[get("/")]
+fn index() -> rocket::response::content::RawHtml<String> {
+    return rocket::response::content::RawHtml(fs::read_to_string("./html/index.html").unwrap());
+}*/
 
-    // HTTPS config
-    let https_config = rocket::Config::figment()
-        .merge(("port", 443))  // HTTPS Port
-        .merge(("address", "0.0.0.0"))
-        .merge(("tls.certs", "./secret/fullchain.pem"))
-        .merge(("tls.key", "./secret/privkey.pem"));
+// any other file in the directory
+/*#[get("/<file..>")]
+fn site(file: std::path::PathBuf) -> rocket::response::content::RawHtml<String> {
+    let mut index_file: String = fs::read_to_string("./html/err.html").unwrap();
+    let path = format!("./html/{}", file.to_str().unwrap());
+    
+    if fs::metadata(path.to_owned()+"/index.html").is_ok() {
+        index_file = fs::read_to_string(path+"/index.html").unwrap();
+    } 
+    else if fs::metadata(path.to_owned()).is_ok() {
+        index_file = fs::read_to_string(&path).unwrap();
+    }
+    
+    return rocket::response::content::RawHtml(index_file);
+}*/
 
-    // HTTP Rocket instance
-    let http_server = rocket::custom(http_config)
+// define routes to use
+#[launch]
+fn rocket() -> _ {
+    rocket::build()
         .mount("/", routes![api::greet::hello, api::rpi::get_temp])
-        .mount("/", FileServer::new("./html", rocket::fs::Options::Index));
-
-    // HTTPS Rocket instance
-    let https_server = rocket::custom(https_config)
-        .mount("/", routes![api::greet::hello, api::rpi::get_temp])
-        .mount("/", FileServer::new("./html", rocket::fs::Options::Index));
-
-    // Run both servers simultaneously
-    rocket::tokio::join!(http_server.launch(), https_server.launch());
-
-    Ok(())
+        .mount("/", FileServer::new("./html", rocket::fs::Options::Index | rocket::fs::Options::DotFiles))
 }
