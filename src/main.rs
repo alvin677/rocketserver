@@ -1,34 +1,36 @@
 use rocket::fs::FileServer;
+use rocket::config::Config;
+use rocket::tokio;
 mod api;
-
 #[macro_use] extern crate rocket;
 
-// index.html file in directory
-/*#[get("/")]
-fn index() -> rocket::response::content::RawHtml<String> {
-    return rocket::response::content::RawHtml(fs::read_to_string("./html/index.html").unwrap());
-}*/
-
-// any other file in the directory
-/*#[get("/<file..>")]
-fn site(file: std::path::PathBuf) -> rocket::response::content::RawHtml<String> {
-    let mut index_file: String = fs::read_to_string("./html/err.html").unwrap();
-    let path = format!("./html/{}", file.to_str().unwrap());
-    
-    if fs::metadata(path.to_owned()+"/index.html").is_ok() {
-        index_file = fs::read_to_string(path+"/index.html").unwrap();
-    } 
-    else if fs::metadata(path.to_owned()).is_ok() {
-        index_file = fs::read_to_string(&path).unwrap();
-    }
-    
-    return rocket::response::content::RawHtml(index_file);
-}*/
-
-// define routes to use
 #[launch]
-fn rocket() -> _ {
-    rocket::build()
-        .mount("/", routes![api::greet::hello, api::rpi::get_temp])
-        .mount("/", FileServer::new("./html", rocket::fs::Options::Index | rocket::fs::Options::DotFiles))
+async fn rocket() -> _ {
+    let https_config = Config::figment()
+    .merge(("port", 8000))
+    .merge(("address", "0.0.0.0"))
+    .merge(("tls.certs", "./secret/fullchain.pem"))
+    .merge(("tls.key", "./secret/privkey.pem"));
+
+    let http_config = Config::figment()
+    .merge(("port", 8080))
+    .merge(("address", "0.0.0.0"));
+
+    let https_app = rocket::custom(https_config)
+    .mount("/", routes![api::greet::hello, api::rpi::get_temp])
+    .mount("/", FileServer::new("./html", rocket::fs::Options::Index));
+
+    let http_app = rocket::custom(http_config)
+    .mount("/", routes![api::greet::hello, api::rpi::get_temp])
+    .mount("/", FileServer::new("./html", rocket::fs::Options::Index));
+
+    // Launch HTTP server in a separate task
+    tokio::spawn(async move {
+        if let Err(e) = http_app.launch().await {
+            println!("HTTP server error: {}", e);
+        }
+    });
+
+    // Return the HTTPS app to be launched by Rocket
+    https_app
 }
